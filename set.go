@@ -11,7 +11,7 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/oarkflow/jet/utils"
+	"github.com/oarkflow/jet/lib"
 )
 
 // Set is responsible to load, parse and cache templates.
@@ -183,7 +183,7 @@ func (s *Set) loadFromFile(templatePath string, cacheAfterParsing bool) (templat
 	if err != nil {
 		return nil, err
 	}
-	return s.parse(templatePath, utils.FromByte(content), cacheAfterParsing)
+	return s.parse(templatePath, lib.FromByte(content), cacheAfterParsing)
 }
 
 // Parse parses `contents` as if it were located at `templatePath`, but won't put the result into the cache.
@@ -239,7 +239,7 @@ func Parse(template string, data any, asMap ...bool) (result string, err error) 
 }
 
 func (s *Set) ParseBytes(data []byte) (template *Template, err error) {
-	return s.parse("", utils.FromByte(data), true)
+	return s.parse("", lib.FromByte(data), true)
 }
 
 // AddGlobal adds a global variable into the Set,
