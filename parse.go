@@ -16,6 +16,7 @@ package jet
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"strconv"
@@ -55,6 +56,7 @@ func (t *Template) Placeholders() []string {
 
 func (t *Template) ParseMap(data any, asMap ...bool) (result string, err error) {
 	var d bytes.Buffer
+	var bt []byte
 	switch data := data.(type) {
 	case map[string]any:
 		if len(asMap) > 0 && asMap[0] {
@@ -82,8 +84,18 @@ func (t *Template) ParseMap(data any, asMap ...bool) (result string, err error) 
 		}
 		result = d.String()
 		return
+	default:
+		bt, err = json.Marshal(data)
+		if err != nil {
+			return
+		}
+		var d map[string]any
+		err = json.Unmarshal(bt, &d)
+		if err != nil {
+			return
+		}
+		return t.ParseMap(d)
 	}
-	return
 }
 
 func (t *Template) String() (template string) {
