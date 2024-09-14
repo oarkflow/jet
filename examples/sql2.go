@@ -2,51 +2,21 @@ package main
 
 import (
 	"fmt"
-	"github.com/oarkflow/jet"
 	"log"
 	"regexp"
 	"strings"
+
+	"github.com/oarkflow/jet"
 )
-
-// Define a struct to hold the template data
-type QueryParams struct {
-	UserID       int
-	WorkItemID   int
-	UserTypes    []string
-	AccessValues []AccessValue
-	TypeValues   []UserTypeValue
-	UserValues   []UserValue
-}
-
-// Define structs for each of the inline value sets
-type AccessValue struct {
-	UserID     int
-	WorkItemID int
-	UserTypeID string
-}
-
-type UserTypeValue struct {
-	UserTypeID string
-	UserType   string
-}
-
-type UserValue struct {
-	UserID          int
-	ProSuspendOnly  bool
-	TechSuspendOnly bool
-}
 
 var reSpace = regexp.MustCompile(`\s+`)
 
-// removeExtraWhitespace removes extra whitespace and new lines from a string
 func removeExtraWhitespace(input string) string {
 	return strings.TrimSpace(reSpace.ReplaceAllString(input, " "))
 }
 
-// Function to generate the SQL query using Jet template
-func generateSQL(params QueryParams) (string, error) {
+func generateSQL(params map[string]any) (string, error) {
 	jet.DefaultSet(jet.WithDelims("{{", "}}"))
-	// Define the SQL template
 	const sqlTemplate = `
 SELECT DISTINCT
     Event.suspend_event_id,
@@ -64,23 +34,23 @@ SELECT DISTINCT
     encounters.encounter_type,
     Event.event_dos
 FROM suspend_events Event
-    JOIN (VALUES 
-        {{ range index, value := AccessValues }}
-        {{if index}},{{end}}({{value.UserID}}, {{value.WorkItemID}}, '{{value.UserTypeID}}')
+    JOIN (VALUES
+        {{ range index, value := access_values }}
+        {{if index}},{{end}}({{value.user_id}}, {{value.work_item_id}}, '{{value.user_type_id}}')
         {{ end }}
     ) AS ua(user_id, work_item_id, user_type_id)
     ON Event.work_item_id = ua.work_item_id
 
-    JOIN (VALUES 
-        {{ range index, value := TypeValues }}
-        {{if index}},{{end}}('{{value.UserTypeID}}', '{{value.UserType}}')
+    JOIN (VALUES
+        {{ range index, value := type_values }}
+        {{if index}},{{end}}('{{value.user_type_id}}', '{{value.user_type}}')
         {{ end }}
     ) AS ut(user_type_id, user_type)
     ON ua.user_type_id = ut.user_type_id
 
-    JOIN (VALUES 
-        {{ range index, value := UserValues }}
-        {{if index}},{{end}}({{value.UserID}}, {{value.ProSuspendOnly}}, {{value.TechSuspendOnly}})
+    JOIN (VALUES
+        {{ range index, value := user_values }}
+        {{if index}},{{end}}({{value.user_id}}, {{value.pro_suspend_only}}, {{value.TechSuspendOnly}})
         {{ end }}
     ) AS u(user_id, pro_suspend_only, tech_suspend_only)
     ON ua.user_id = u.user_id
@@ -97,15 +67,15 @@ FROM suspend_events Event
     LEFT JOIN providers provider_lov ON Event.suspend_provider = provider_lov.provider_lov
 WHERE NOT Event.suspend_released
     AND encounter_details.encounter_status = 'SUSPEND'
-    AND ua.user_id = {{UserID}}
-    AND ut.user_type IN 
-        ({{ range index, type := UserTypes }}
+    AND ua.user_id = {{user_id}}
+    AND ut.user_type IN
+        ({{ range index, type := user_types }}
             {{if index}},{{end}}'{{type}}'
         {{ end }})
-    AND Event.work_item_id = {{WorkItemID}}
-    {{ if UserValues }}
-        {{ range index, value := UserValues }}
-            {{ if value.ProSuspendOnly }}
+    AND Event.work_item_id = {{work_item_id}}
+    {{ if user_values }}
+        {{ range index, value := user_values }}
+            {{ if value.pro_suspend_only }}
                 {{ if value.TechSuspendOnly }}
                     AND (u.pro_suspend_only = true AND u.tech_suspend_only = true AND work_items.work_item_type_id NOT IN (1, 2))
                 {{ else }}
@@ -125,32 +95,26 @@ WHERE NOT Event.suspend_released
 	return jet.Parse(sqlTemplate, params)
 }
 
-// Example usage of the function
 func main() {
-	// Define the data to replace the placeholders
-	params := QueryParams{
-		UserID:     21281,
-		WorkItemID: 33,
-		UserTypes:  []string{"G_SUSPEND_MGR", "SUSPEND_MANAGER"},
-		AccessValues: []AccessValue{
-			{UserID: 21281, WorkItemID: 33, UserTypeID: "G_SUSPEND_MGR"},
-			{UserID: 21281, WorkItemID: 33, UserTypeID: "SUSPEND_MANAGER"},
+	params := map[string]any{
+		"user_id":      21281,
+		"work_item_id": 33,
+		"user_types":   []string{"G_SUSPEND_MGR", "SUSPEND_MANAGER"},
+		"access_values": []map[string]any{
+			{"user_id": 21281, "work_item_id": 33, "user_type_id": "G_SUSPEND_MGR"},
+			{"user_id": 21281, "work_item_id": 33, "user_type_id": "SUSPEND_MANAGER"},
 		},
-		TypeValues: []UserTypeValue{
-			{UserTypeID: "SUSPEND_MANAGER", UserType: "SUSPEND_MANAGER"},
-			{UserTypeID: "G_SUSPEND_MGR", UserType: "G_SUSPEND_MGR"},
+		"type_values": []map[string]any{
+			{"user_type_id": "SUSPEND_MANAGER", "user_type": "SUSPEND_MANAGER"},
+			{"user_type_id": "G_SUSPEND_MGR", "user_type": "G_SUSPEND_MGR"},
 		},
-		UserValues: []UserValue{
-			{UserID: 21281, ProSuspendOnly: true, TechSuspendOnly: false},
+		"user_values": []map[string]any{
+			{"user_id": 21281, "pro_suspend_only": true, "TechSuspendOnly": false},
 		},
 	}
-
-	// Generate the SQL query
 	query, err := generateSQL(params)
 	if err != nil {
 		log.Fatalf("Error generating SQL: %v", err)
 	}
-
-	// Print the generated query
 	fmt.Println(removeExtraWhitespace(query))
 }
