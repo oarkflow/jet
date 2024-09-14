@@ -111,6 +111,10 @@ func InDevelopmentMode() Option {
 	}
 }
 
+func NewWithMemory(opts ...Option) *Set {
+	return NewSet(NewInMemLoader(), opts...)
+}
+
 // GetTemplate tries to find (and parse, if not yet parsed) the template at the specified path.
 //
 // For example, GetTemplate("catalog/products.list") with extensions set to []string{"", ".html.jet",".jet"}
@@ -203,6 +207,15 @@ func (s *Set) Parse(templatePath, contents string) (template *Template, err erro
 
 func (s *Set) ParseContent(contents string) (template *Template, err error) {
 	return s.parse("", contents, true)
+}
+
+func (s *Set) ParseTemplate(template string, data any, asMap ...bool) (result string, err error) {
+	tmpl, err := s.parse("", template, true)
+	if err != nil {
+		return
+	}
+	result, err = tmpl.ParseMap(data, asMap...)
+	return
 }
 
 type Tmpl struct {
