@@ -51,10 +51,10 @@ func NewSet(loader Loader, opts ...Option) *Set {
 		opt(s)
 	}
 	if s.leftDelim == "" {
-		s.leftDelim = "{"
+		s.leftDelim = DefaultLeftDelim
 	}
 	if s.rightDelim == "" {
-		s.rightDelim = "}"
+		s.rightDelim = DefaultRightDelim
 	}
 	pattern := fmt.Sprintf(`\%s([^}]+)\%s`, s.leftDelim, s.rightDelim)
 	s.placeholderParser = regexp.MustCompile(pattern)

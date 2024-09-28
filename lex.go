@@ -140,11 +140,11 @@ var key = map[string]itemType{
 
 const eof = -1
 
-const (
-	defaultLeftDelim  = "{{"
-	defaultRightDelim = "}}"
-	leftComment       = "{*"
-	rightComment      = "*}"
+var (
+	DefaultLeftDelim  = "{{"
+	DefaultRightDelim = "}}"
+	LeftComment       = "{*"
+	RightComment      = "*}"
 	leftTrimMarker    = "- "
 	rightTrimMarker   = " -"
 	trimMarkerLen     = Pos(len(leftTrimMarker))
@@ -268,9 +268,9 @@ func newLexer(name, input string, run bool) *lexer {
 		name:           name,
 		input:          input,
 		items:          make([]item, 0),
-		leftDelim:      defaultLeftDelim,
-		rightDelim:     defaultRightDelim,
-		trimRightDelim: rightTrimMarker + defaultRightDelim,
+		leftDelim:      DefaultLeftDelim,
+		rightDelim:     DefaultRightDelim,
+		trimRightDelim: rightTrimMarker + DefaultRightDelim,
 	}
 	if run {
 		l.lex()
@@ -290,7 +290,7 @@ func lexText(l *lexer) stateFn {
 	for {
 		// without breaking the API, this seems like a reasonable workaround to correctly parse comments
 		i := strings.IndexByte(l.input[l.pos:], l.leftDelim[0])  // index of suspected left delimiter
-		ic := strings.IndexByte(l.input[l.pos:], leftComment[0]) // index of suspected left comment marker
+		ic := strings.IndexByte(l.input[l.pos:], LeftComment[0]) // index of suspected left comment marker
 		if ic > -1 && ic < i {                                   // use whichever is lower for future lexing
 			i = ic
 		}
@@ -314,7 +314,7 @@ func lexText(l *lexer) stateFn {
 				l.ignore()
 				return lexLeftDelim
 			}
-			if strings.HasPrefix(l.input[l.pos:], leftComment) {
+			if strings.HasPrefix(l.input[l.pos:], LeftComment) {
 				if l.pos > l.start {
 					l.emit(itemText)
 				}
@@ -347,12 +347,12 @@ func lexLeftDelim(l *lexer) stateFn {
 
 // lexComment scans a comment. The left comment marker is known to be present.
 func lexComment(l *lexer) stateFn {
-	l.pos += Pos(len(leftComment))
-	i := strings.Index(l.input[l.pos:], rightComment)
+	l.pos += Pos(len(LeftComment))
+	i := strings.Index(l.input[l.pos:], RightComment)
 	if i < 0 {
 		return l.errorf("unclosed comment")
 	}
-	l.pos += Pos(i + len(rightComment))
+	l.pos += Pos(i + len(RightComment))
 	l.ignore()
 	return lexText
 }
